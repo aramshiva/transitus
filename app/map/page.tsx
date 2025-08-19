@@ -1,0 +1,203 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import MapComponent from './MapComponent'
+import { Button } from '@/components/ui/button'
+
+interface Vehicle {
+  vehicleId: string
+  lastLocationUpdateTime: number
+  lastUpdateTime: number
+  location?: {
+    lat: number
+    lon: number
+  }
+  tripId?: string
+  status: string
+  phase: string
+  agencyId?: string
+  agencyInfo?: {
+    agencyId: string
+    name: string
+    phone?: string
+    url?: string
+    [key: string]: unknown
+  }
+  agency?: {
+    id: string
+    name: string
+    phone?: string
+    url?: string
+    [key: string]: unknown
+  }
+  tripStatus?: {
+    orientation?: number
+    nextStop?: string
+    closestStop?: string
+    scheduleDeviation?: number
+    occupancyCount?: number
+    occupancyCapacity?: number
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+interface VehicleResponse {
+  code: number
+  currentTime: number
+  data: {
+    limitExceeded: boolean
+    list: Vehicle[]
+  }
+}
+
+export default function MapPage() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<number>(0)
+
+  const fetchVehicles = async () => {
+    try {
+      setError(null)
+      const response = await fetch('/api/vehicles')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data: VehicleResponse = await response.json()
+      
+      if (data.code === 200) {
+        const vehiclesWithLocation = data.data.list
+          .filter(vehicle => 
+            vehicle.location && 
+            vehicle.location.lat && 
+            vehicle.location.lon &&
+            vehicle.lastLocationUpdateTime > 0
+          )
+          .map(vehicle => ({
+            ...vehicle,
+            agency: vehicle.agencyInfo ? {
+              id: vehicle.agencyInfo.agencyId,
+              name: vehicle.agencyInfo.name,
+              phone: vehicle.agencyInfo.phone,
+              url: vehicle.agencyInfo.url
+            } : vehicle.agencyId ? {
+              id: vehicle.agencyId,
+              name: `Agency ${vehicle.agencyId}`
+            } : undefined
+          }))
+        
+        setVehicles(vehiclesWithLocation)
+        setLastUpdate(data.currentTime)
+      } else {
+        throw new Error(`API error: ${data.code}`)
+      }
+    } catch (err) {
+      console.error('Error fetching vehicles:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch vehicle data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchVehicles()
+    
+    const interval = setInterval(fetchVehicles, 15000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString()
+  }
+
+  const getVehicleType = (vehicleId: string, agencyId?: string) => {
+    if (vehicleId.includes('LLR')) return 'Light Rail'
+    if (agencyId === '95') return 'Ferry'
+    if (agencyId === '96') return 'Monorail'
+    if (agencyId === '51') return 'Train'
+    if (vehicleId.includes('KPOB')) return 'Bus'
+    return 'Transit Vehicle'
+  }
+
+  const getAgencyStats = () => {
+    const agencyStats = vehicles.reduce((acc, vehicle) => {
+      const agencyName = vehicle.agencyInfo?.name || 'Unknown'
+      if (!acc[agencyName]) {
+        acc[agencyName] = 0
+      }
+      acc[agencyName]++
+      return acc
+    }, {} as Record<string, number>)
+    
+    return Object.entries(agencyStats)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+  }
+
+  return (
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Live Map</h1>
+          <p className="text-gray-600">
+            Real-time tracking of vehicles across Sound Transit brands.
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Card className="flex-1">
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold">
+                {vehicles.length}
+              </div>
+              <div className="text-sm text-gray-600">Active Vehicles</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="flex-1">
+            <CardContent className="pt-6">
+              <div className="text-sm font-medium">
+                Last Update: {lastUpdate ? formatTime(lastUpdate) : 'Never'}
+              </div>
+              <Button
+                onClick={fetchVehicles}
+                disabled={loading}
+                className="mt-2 px-3 py-1 text-sm disabled:opacity-50"
+              >
+                {loading ? 'Refreshing...' : 'Refresh Now'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="text-red-600 font-medium">Error</div>
+            <div className="text-red-800">{error}</div>
+            <button
+              onClick={fetchVehicles}
+              className="mt-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent>
+          <div className="h-[600px] rounded-lg overflow-hidden">
+            <MapComponent vehicles={vehicles} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
