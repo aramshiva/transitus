@@ -269,19 +269,6 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
                     )}
                 </div>
             )}
-
-            {vehicle.agency && (
-                <div className="border-t pt-2 text-sm">
-                    <div className="font-medium text-gray-600 mb-1">Agency Details</div>
-                    <div className="space-y-1">
-                        <div className="text-xs text-gray-500">ID: {vehicle.agency.id}</div>
-                        {vehicle.agency.phone && (
-                            <div className="text-xs">📞 {vehicle.agency.phone}</div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             <div className="border-t pt-2">
                 <button
                     onClick={() => setShowDetails(!showDetails)}
@@ -297,6 +284,9 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
                             <div className="text-sm">
                                 <div className="font-medium text-gray-700 mb-2">Trip Status Details</div>
                                 <div className="space-y-1 text-xs">
+                                    {vehicle.agency?.id && (
+                                        <div><span className="font-medium">Agency ID:</span> {vehicle.agency.id}</div>
+                                    )}
                                     {vehicle.tripStatus.activeTripId && (
                                         <div><span className="font-medium">Active Trip:</span> {vehicle.tripStatus.activeTripId}</div>
                                     )}
