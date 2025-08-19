@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
   ssr: false,
@@ -75,46 +75,13 @@ interface VehicleResponse {
 }
 
 export default function MapPage() {
+  const searchParams = useSearchParams();
+  const borderless = searchParams.get('borderless') === 'true';
+  
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
-  const [agenciesLoading, setAgenciesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(0);
-
-  const fetchAgencyData = async (agencyId: string): Promise<Agency | null> => {
-    try {
-      const response = await fetch(`/api/agency?id=${agencyId}`);
-      if (!response.ok) {
-        console.warn(
-          `Failed to fetch agency ${agencyId}:`,
-          response.statusText,
-        );
-        return null;
-      }
-      const data = await response.json();
-      return data.agency;
-    } catch (error) {
-      console.warn(`Error fetching agency ${agencyId}:`, error);
-      return null;
-    }
-  };
-
-  const fetchAllAgencies = async (agencyIds: string[]) => {
-    setAgenciesLoading(true);
-    try {
-      const agencyPromises = agencyIds.map((id) => fetchAgencyData(id));
-      const agencyResults = await Promise.all(agencyPromises);
-      const validAgencies = agencyResults.filter(
-        (agency): agency is Agency => agency !== null,
-      );
-      setAgencies(validAgencies);
-    } catch (error) {
-      console.error("Error fetching agencies:", error);
-    } finally {
-      setAgenciesLoading(false);
-    }
-  };
 
   const fetchVehicles = async () => {
     try {
@@ -155,18 +122,6 @@ export default function MapPage() {
 
         setVehicles(vehiclesWithLocation);
         setLastUpdate(data.currentTime);
-
-        const uniqueAgencyIds = Array.from(
-          new Set(
-            vehiclesWithLocation
-              .map((v) => v.agency?.id || v.agencyId)
-              .filter(Boolean),
-          ),
-        ) as string[];
-
-        if (uniqueAgencyIds.length > 0) {
-          fetchAllAgencies(uniqueAgencyIds);
-        }
       } else {
         throw new Error(`API error: ${data.code}`);
       }
@@ -192,11 +147,13 @@ export default function MapPage() {
     return new Date(timestamp).toLocaleTimeString();
   };
 
-  const getVehicleCountByAgency = (agencyId: string) => {
-    return vehicles.filter(
-      (v) => v.agency?.id === agencyId || v.agencyId === agencyId,
-    ).length;
-  };
+  if (borderless) {
+    return (
+      <div className="h-screen w-full">
+        <MapComponent vehicles={vehicles} />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-6">
