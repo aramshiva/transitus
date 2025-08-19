@@ -201,35 +201,14 @@ export default function MapPage() {
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
+        <div className="pt-5">
           <h1 className="text-3xl font-bold">Live Map</h1>
           <p className="text-gray-600">
             Real-time tracking of vehicles across Sound Transit brands.
           </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Card className="flex-1">
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{vehicles.length}</div>
-              <div className="text-sm text-gray-600">Active Vehicles</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="flex-1">
-            <CardContent className="pt-6">
-              <div className="text-sm font-medium">
-                Last Update: {lastUpdate ? formatTime(lastUpdate) : "Never"}
-              </div>
-              <Button
-                onClick={fetchVehicles}
-                disabled={loading}
-                className="mt-2 px-3 py-1 text-sm disabled:opacity-50"
-              >
-                {loading ? "Refreshing..." : "Refresh Now"}
-              </Button>
-            </CardContent>
-          </Card>
+          <p className="text-gray-600 text-xs">
+            Last Update: {lastUpdate ? formatTime(lastUpdate) : "Never"} - Active Vehicles: {vehicles.length}
+          </p>
         </div>
       </div>
 
