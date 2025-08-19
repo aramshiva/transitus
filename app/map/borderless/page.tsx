@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import MapComponent from '../MapComponent'
-import { Button } from '@/components/ui/button'
+import dynamic from 'next/dynamic'
+
+const MapComponent = dynamic(() => import('../MapComponent'), {
+  ssr: false
+})
 
 interface Vehicle {
   vehicleId: string
@@ -54,13 +56,9 @@ interface VehicleResponse {
 
 export default function MapPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<number>(0)
 
   const fetchVehicles = async () => {
     try {
-      setError(null)
       const response = await fetch('/api/vehicles')
       
       if (!response.ok) {
@@ -91,15 +89,11 @@ export default function MapPage() {
           }))
         
         setVehicles(vehiclesWithLocation)
-        setLastUpdate(data.currentTime)
       } else {
         throw new Error(`API error: ${data.code}`)
       }
     } catch (err) {
       console.error('Error fetching vehicles:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch vehicle data')
-    } finally {
-      setLoading(false)
     }
   }
 

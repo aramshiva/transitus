@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import MapComponent from './MapComponent'
 import { Button } from '@/components/ui/button'
 
@@ -115,30 +115,6 @@ export default function MapPage() {
     return new Date(timestamp).toLocaleTimeString()
   }
 
-  const getVehicleType = (vehicleId: string, agencyId?: string) => {
-    if (vehicleId.includes('LLR')) return 'Light Rail'
-    if (agencyId === '95') return 'Ferry'
-    if (agencyId === '96') return 'Monorail'
-    if (agencyId === '51') return 'Train'
-    if (vehicleId.includes('KPOB')) return 'Bus'
-    return 'Transit Vehicle'
-  }
-
-  const getAgencyStats = () => {
-    const agencyStats = vehicles.reduce((acc, vehicle) => {
-      const agencyName = vehicle.agencyInfo?.name || 'Unknown'
-      if (!acc[agencyName]) {
-        acc[agencyName] = 0
-      }
-      acc[agencyName]++
-      return acc
-    }, {} as Record<string, number>)
-    
-    return Object.entries(agencyStats)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-  }
-
   return (
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -194,7 +170,7 @@ export default function MapPage() {
       <Card>
         <CardContent>
           <div className="h-[600px] rounded-lg overflow-hidden">
-            <MapComponent vehicles={vehicles} />
+            {typeof window !== 'undefined' && <MapComponent vehicles={vehicles} />}
           </div>
         </CardContent>
       </Card>
