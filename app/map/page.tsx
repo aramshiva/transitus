@@ -88,7 +88,7 @@ export default function MapPage() {
       if (!response.ok) {
         console.warn(
           `Failed to fetch agency ${agencyId}:`,
-          response.statusText
+          response.statusText,
         );
         return null;
       }
@@ -106,7 +106,7 @@ export default function MapPage() {
       const agencyPromises = agencyIds.map((id) => fetchAgencyData(id));
       const agencyResults = await Promise.all(agencyPromises);
       const validAgencies = agencyResults.filter(
-        (agency): agency is Agency => agency !== null
+        (agency): agency is Agency => agency !== null,
       );
       setAgencies(validAgencies);
     } catch (error) {
@@ -134,7 +134,7 @@ export default function MapPage() {
               vehicle.location &&
               vehicle.location.lat &&
               vehicle.location.lon &&
-              vehicle.lastLocationUpdateTime > 0
+              vehicle.lastLocationUpdateTime > 0,
           )
           .map((vehicle) => ({
             ...vehicle,
@@ -146,11 +146,11 @@ export default function MapPage() {
                   url: vehicle.agencyInfo.url,
                 }
               : vehicle.agencyId
-              ? {
-                  id: vehicle.agencyId,
-                  name: `Agency ${vehicle.agencyId}`,
-                }
-              : undefined,
+                ? {
+                    id: vehicle.agencyId,
+                    name: `Agency ${vehicle.agencyId}`,
+                  }
+                : undefined,
           }));
 
         setVehicles(vehiclesWithLocation);
@@ -160,8 +160,8 @@ export default function MapPage() {
           new Set(
             vehiclesWithLocation
               .map((v) => v.agency?.id || v.agencyId)
-              .filter(Boolean)
-          )
+              .filter(Boolean),
+          ),
         ) as string[];
 
         if (uniqueAgencyIds.length > 0) {
@@ -173,7 +173,7 @@ export default function MapPage() {
     } catch (err) {
       console.error("Error fetching vehicles:", err);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch vehicle data"
+        err instanceof Error ? err.message : "Failed to fetch vehicle data",
       );
     } finally {
       setLoading(false);
@@ -194,7 +194,7 @@ export default function MapPage() {
 
   const getVehicleCountByAgency = (agencyId: string) => {
     return vehicles.filter(
-      (v) => v.agency?.id === agencyId || v.agencyId === agencyId
+      (v) => v.agency?.id === agencyId || v.agencyId === agencyId,
     ).length;
   };
 
@@ -207,7 +207,8 @@ export default function MapPage() {
             Real-time tracking of vehicles across Sound Transit brands.
           </p>
           <p className="text-gray-600 text-xs">
-            Last Update: {lastUpdate ? formatTime(lastUpdate) : "Never"} - Active Vehicles: {vehicles.length}
+            Last Update: {lastUpdate ? formatTime(lastUpdate) : "Never"} -
+            Active Vehicles: {vehicles.length}
           </p>
         </div>
       </div>

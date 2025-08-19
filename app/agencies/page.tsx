@@ -22,16 +22,18 @@ interface Agency {
 
 export default async function Agencies() {
   let agencies: Agency[] = [];
-  
+
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agencies`)
-    
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/agencies`,
+    );
+
     if (response.ok) {
       const data = await response.json();
       agencies = data.data?.references?.agencies || [];
     }
   } catch (error) {
-    console.error('Failed to fetch agencies:', error);
+    console.error("Failed to fetch agencies:", error);
   }
 
   return (
@@ -75,7 +77,8 @@ export default async function Agencies() {
             </div>
           </CardContent>
           <CardFooter className="text-gray-700 text-xs pb-2 mt-auto">
-            Reference ID - {agency.id}{agency.lang}
+            Reference ID - {agency.id}
+            {agency.lang}
           </CardFooter>
         </Card>
       ))}
