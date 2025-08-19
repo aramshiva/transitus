@@ -1,9 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Card, CardContent } from '@/components/ui/card'
-import MapComponent from './MapComponent'
 import { Button } from '@/components/ui/button'
+
+const MapComponent = dynamic(() => import('./MapComponent'), { 
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>
+})
 
 interface Vehicle {
   vehicleId: string
@@ -170,7 +175,7 @@ export default function MapPage() {
       <Card>
         <CardContent>
           <div className="h-[600px] rounded-lg overflow-hidden">
-            {typeof window !== 'undefined' && <MapComponent vehicles={vehicles} />}
+            <MapComponent vehicles={vehicles} />
           </div>
         </CardContent>
       </Card>

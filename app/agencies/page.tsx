@@ -21,10 +21,18 @@ interface Agency {
 }
 
 export default async function Agencies() {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agencies`)
-
-  const data = await response.json();
-  const agencies: Agency[] = data.data?.references?.agencies || [];
+  let agencies: Agency[] = [];
+  
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agencies`)
+    
+    if (response.ok) {
+      const data = await response.json();
+      agencies = data.data?.references?.agencies || [];
+    }
+  } catch (error) {
+    console.error('Failed to fetch agencies:', error);
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-20">
