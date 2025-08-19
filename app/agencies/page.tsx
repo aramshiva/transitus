@@ -24,10 +24,9 @@ export default async function Agencies() {
   let agencies: Agency[] = [];
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/agencies`,
-    );
-
+    const { GET } = await import("../api/agencies/route");
+    const response = await GET();
+    
     if (response.ok) {
       const data = await response.json();
       agencies = data.data?.references?.agencies || [];
