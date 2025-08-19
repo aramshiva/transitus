@@ -1,124 +1,202 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-const MapComponent = dynamic(() => import('./MapComponent'), { 
+const MapComponent = dynamic(() => import("./MapComponent"), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full">Loading map...</div>
-})
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      Loading map...
+    </div>
+  ),
+});
+
+interface Agency {
+  id: string;
+  name: string;
+  phone?: string;
+  url?: string;
+  fareUrl?: string;
+  timezone?: string;
+  email?: string;
+  disclaimer?: string;
+  lang?: string;
+  privateService?: boolean;
+}
 
 interface Vehicle {
-  vehicleId: string
-  lastLocationUpdateTime: number
-  lastUpdateTime: number
+  vehicleId: string;
+  lastLocationUpdateTime: number;
+  lastUpdateTime: number;
   location?: {
-    lat: number
-    lon: number
-  }
-  tripId?: string
-  status: string
-  phase: string
-  agencyId?: string
+    lat: number;
+    lon: number;
+  };
+  tripId?: string;
+  status: string;
+  phase: string;
+  agencyId?: string;
   agencyInfo?: {
-    agencyId: string
-    name: string
-    phone?: string
-    url?: string
-    [key: string]: unknown
-  }
+    agencyId: string;
+    name: string;
+    phone?: string;
+    url?: string;
+    [key: string]: unknown;
+  };
   agency?: {
-    id: string
-    name: string
-    phone?: string
-    url?: string
-    [key: string]: unknown
-  }
+    id: string;
+    name: string;
+    phone?: string;
+    url?: string;
+    [key: string]: unknown;
+  };
   tripStatus?: {
-    orientation?: number
-    nextStop?: string
-    closestStop?: string
-    scheduleDeviation?: number
-    occupancyCount?: number
-    occupancyCapacity?: number
-    [key: string]: unknown
-  }
-  [key: string]: unknown
+    orientation?: number;
+    nextStop?: string;
+    closestStop?: string;
+    scheduleDeviation?: number;
+    occupancyCount?: number;
+    occupancyCapacity?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 }
 
 interface VehicleResponse {
-  code: number
-  currentTime: number
+  code: number;
+  currentTime: number;
   data: {
-    limitExceeded: boolean
-    list: Vehicle[]
-  }
+    limitExceeded: boolean;
+    list: Vehicle[];
+  };
 }
 
 export default function MapPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<number>(0)
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [agenciesLoading, setAgenciesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<number>(0);
+
+  const fetchAgencyData = async (agencyId: string): Promise<Agency | null> => {
+    try {
+      const response = await fetch(`/api/agency?id=${agencyId}`);
+      if (!response.ok) {
+        console.warn(
+          `Failed to fetch agency ${agencyId}:`,
+          response.statusText
+        );
+        return null;
+      }
+      const data = await response.json();
+      return data.agency;
+    } catch (error) {
+      console.warn(`Error fetching agency ${agencyId}:`, error);
+      return null;
+    }
+  };
+
+  const fetchAllAgencies = async (agencyIds: string[]) => {
+    setAgenciesLoading(true);
+    try {
+      const agencyPromises = agencyIds.map((id) => fetchAgencyData(id));
+      const agencyResults = await Promise.all(agencyPromises);
+      const validAgencies = agencyResults.filter(
+        (agency): agency is Agency => agency !== null
+      );
+      setAgencies(validAgencies);
+    } catch (error) {
+      console.error("Error fetching agencies:", error);
+    } finally {
+      setAgenciesLoading(false);
+    }
+  };
 
   const fetchVehicles = async () => {
     try {
-      setError(null)
-      const response = await fetch('/api/vehicles')
-      
+      setError(null);
+      const response = await fetch("/api/vehicles");
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      const data: VehicleResponse = await response.json()
-      
+
+      const data: VehicleResponse = await response.json();
+
       if (data.code === 200) {
         const vehiclesWithLocation = data.data.list
-          .filter(vehicle => 
-            vehicle.location && 
-            vehicle.location.lat && 
-            vehicle.location.lon &&
-            vehicle.lastLocationUpdateTime > 0
+          .filter(
+            (vehicle) =>
+              vehicle.location &&
+              vehicle.location.lat &&
+              vehicle.location.lon &&
+              vehicle.lastLocationUpdateTime > 0
           )
-          .map(vehicle => ({
+          .map((vehicle) => ({
             ...vehicle,
-            agency: vehicle.agencyInfo ? {
-              id: vehicle.agencyInfo.agencyId,
-              name: vehicle.agencyInfo.name,
-              phone: vehicle.agencyInfo.phone,
-              url: vehicle.agencyInfo.url
-            } : vehicle.agencyId ? {
-              id: vehicle.agencyId,
-              name: `Agency ${vehicle.agencyId}`
-            } : undefined
-          }))
-        
-        setVehicles(vehiclesWithLocation)
-        setLastUpdate(data.currentTime)
+            agency: vehicle.agencyInfo
+              ? {
+                  id: vehicle.agencyInfo.agencyId,
+                  name: vehicle.agencyInfo.name,
+                  phone: vehicle.agencyInfo.phone,
+                  url: vehicle.agencyInfo.url,
+                }
+              : vehicle.agencyId
+              ? {
+                  id: vehicle.agencyId,
+                  name: `Agency ${vehicle.agencyId}`,
+                }
+              : undefined,
+          }));
+
+        setVehicles(vehiclesWithLocation);
+        setLastUpdate(data.currentTime);
+
+        const uniqueAgencyIds = Array.from(
+          new Set(
+            vehiclesWithLocation
+              .map((v) => v.agency?.id || v.agencyId)
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        if (uniqueAgencyIds.length > 0) {
+          fetchAllAgencies(uniqueAgencyIds);
+        }
       } else {
-        throw new Error(`API error: ${data.code}`)
+        throw new Error(`API error: ${data.code}`);
       }
     } catch (err) {
-      console.error('Error fetching vehicles:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch vehicle data')
+      console.error("Error fetching vehicles:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch vehicle data"
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchVehicles()
-    
-    const interval = setInterval(fetchVehicles, 15000)
-    
-    return () => clearInterval(interval)
-  }, [])
+    fetchVehicles();
+
+    const interval = setInterval(fetchVehicles, 15000);
+
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString()
-  }
+    return new Date(timestamp).toLocaleTimeString();
+  };
+
+  const getVehicleCountByAgency = (agencyId: string) => {
+    return vehicles.filter(
+      (v) => v.agency?.id === agencyId || v.agencyId === agencyId
+    ).length;
+  };
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -129,13 +207,11 @@ export default function MapPage() {
             Real-time tracking of vehicles across Sound Transit brands.
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4">
           <Card className="flex-1">
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">
-                {vehicles.length}
-              </div>
+              <div className="text-2xl font-bold">{vehicles.length}</div>
               <div className="text-sm text-gray-600">Active Vehicles</div>
             </CardContent>
           </Card>
@@ -143,14 +219,14 @@ export default function MapPage() {
           <Card className="flex-1">
             <CardContent className="pt-6">
               <div className="text-sm font-medium">
-                Last Update: {lastUpdate ? formatTime(lastUpdate) : 'Never'}
+                Last Update: {lastUpdate ? formatTime(lastUpdate) : "Never"}
               </div>
               <Button
                 onClick={fetchVehicles}
                 disabled={loading}
                 className="mt-2 px-3 py-1 text-sm disabled:opacity-50"
               >
-                {loading ? 'Refreshing...' : 'Refresh Now'}
+                {loading ? "Refreshing..." : "Refresh Now"}
               </Button>
             </CardContent>
           </Card>
@@ -180,5 +256,5 @@ export default function MapPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

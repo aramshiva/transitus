@@ -139,6 +139,16 @@ interface MapComponentProps {
     vehicles: Vehicle[]
 }
 
+interface AgencyData {
+    [agencyId: string]: {
+        name: string
+        phone?: string
+        url?: string
+        fareUrl?: string
+        timezone?: string
+    }
+}
+
 function MapBounds({ vehicles }: { vehicles: Vehicle[] }) {
     const map = useMap()
 
@@ -187,7 +197,10 @@ const formatDistance = (meters?: number): string => {
     return `${(meters / 1000).toFixed(1)}km`
 }
 
-function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
+function VehiclePopup({ vehicle, agencyData }: { 
+    vehicle: Vehicle
+    agencyData: AgencyData
+}) {
     const [showDetails, setShowDetails] = useState(false)
 
     const statusColor = vehicle.status === 'SCHEDULED' ? 'bg-green-100 text-green-800' :
@@ -198,6 +211,8 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
         Math.abs(vehicle.tripStatus?.scheduleDeviation || 0) > 300 ? 'text-red-600' :
         'text-yellow-600'
 
+    const agencyInfo = agencyData[vehicle.agency?.id || '']
+
     return (
         <div className="space-y-3 max-h-96 overflow-y-auto">
             <div className="flex justify-between items-start">
@@ -206,7 +221,7 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
                         {getVehicleType(vehicle.vehicleId, vehicle.agency?.id)}
                     </div>
                     <div className="text-sm text-gray-600">
-                        {vehicle.agency?.name || 'Unknown Agency'}
+                        {agencyInfo?.name || vehicle.agency?.name || 'Unknown Agency'}
                     </div>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded ${statusColor}`}>
@@ -269,6 +284,32 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
                     )}
                 </div>
             )}
+
+            {agencyInfo && (agencyInfo.phone || agencyInfo.url) && (
+                <div className="border-t pt-2 text-sm">
+                    <div className="font-medium text-gray-600 mb-1">Agency Info</div>
+                    <div className="space-y-1">
+                        {agencyInfo.phone && (
+                            <div className="text-xs">📞 {agencyInfo.phone}</div>
+                        )}
+                        {agencyInfo.url && (
+                            <div className="text-xs">
+                                <a href={agencyInfo.url} target="_blank" rel="noopener noreferrer" className="text-black hover:underline">
+                                    Website
+                                </a>
+                            </div>
+                        )}
+                        {agencyInfo.fareUrl && (
+                            <div className="text-xs">
+                                <a href={agencyInfo.fareUrl} target="_blank" rel="noopener noreferrer" className="text-black hover:underline">
+                                    Fares
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="border-t pt-2">
                 <button
                     onClick={() => setShowDetails(!showDetails)}
@@ -328,6 +369,19 @@ function VehiclePopup({ vehicle }: { vehicle: Vehicle }) {
 export default function MapComponent({ vehicles }: MapComponentProps) {
     const defaultCenter: [number, number] = [47.6062, -122.3321]
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+    const [agencyData, setAgencyData] = useState<AgencyData>({})
+
+    const fetchAgencyData = async (agencyId: string) => {
+        try {
+            const response = await fetch(`/api/agency?id=${agencyId}`)
+            if (!response.ok) return null
+            const data = await response.json()
+            return data.agency
+        } catch (error) {
+            console.warn(`Error fetching agency ${agencyId}:`, error)
+            return null
+        }
+    }
 
     useEffect(() => {
         if (navigator.geolocation) {
@@ -341,6 +395,33 @@ export default function MapComponent({ vehicles }: MapComponentProps) {
             )
         }
     }, [])
+
+    useEffect(() => {
+        const fetchAllAgencies = async () => {
+            const uniqueAgencyIds = Array.from(new Set(
+                vehicles
+                    .map(v => v.agency?.id)
+                    .filter(Boolean)
+            )) as string[]
+
+            const newAgencyData: AgencyData = { ...agencyData }
+            
+            for (const agencyId of uniqueAgencyIds) {
+                if (!newAgencyData[agencyId]) {
+                    const agency = await fetchAgencyData(agencyId)
+                    if (agency) {
+                        newAgencyData[agencyId] = agency
+                    }
+                }
+            }
+
+            setAgencyData(newAgencyData)
+        }
+
+        if (vehicles.length > 0) {
+            fetchAllAgencies()
+        }
+    }, [vehicles]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <MapContainer
@@ -366,7 +447,7 @@ export default function MapComponent({ vehicles }: MapComponentProps) {
                         icon={createVehicleIcon(vehicle)}
                     >
                         <Popup maxWidth={400} maxHeight={500} className="vehicle-popup">
-                            <VehiclePopup vehicle={vehicle} />
+                            <VehiclePopup vehicle={vehicle} agencyData={agencyData} />
                         </Popup>
                     </Marker>
                 )
